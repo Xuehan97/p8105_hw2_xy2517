@@ -1,0 +1,67 @@
+---
+title: "p8105_hw2_xy2517"
+author: "Xuehan Yang xy2517"
+date: "2021/10/2"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+library(readxl)
+```
+
+
+# Problem 1
+
+**Read and clean the Mr.Trash Wheel sheet.**
+
+```{r,warning=FALSE}
+trashwheel = read_excel(path = "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx",range = cell_cols("A:N")) %>% 
+  janitor::clean_names() %>% 
+  mutate(sports_balls = round(sports_balls,0)) %>%  # round sports_balls to integer
+  rename(weight = weight_tons, volumn = volume_cubic_yards) %>%  # change column name
+  pivot_longer(
+    plastic_bottles:sports_balls,
+    names_to = "trash_type",
+    values_to = "units"
+  ) %>%  # turn trash types into a variable
+  drop_na(dumpster)
+```
+
+**Read and clean 2018 and 2019 precipitation data.**
+
+```{r, read data seperately}
+rain_2019 = read_excel(path = "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx", sheet = "2019 Precipitation", skip = 1) %>% 
+  janitor::clean_names() %>% 
+  drop_na(total,month) %>% 
+  mutate(year = 2019)
+
+rain_2018 = read_excel(path = "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx", sheet = "2018 Precipitation", skip = 1) %>% 
+  janitor::clean_names() %>% 
+  drop_na(total,month) %>% 
+  mutate(year = 2018)
+```
+
+**Combine the rain_2018 and rain_2019 together.**
+
+```{r, bind rows}
+precipitation = bind_rows(rain_2018,rain_2019) %>% 
+  mutate(month = month.name[month]) # change numeric month name to character
+```
+
+**Description:**
+
+* As for trashwheel, there are total `r nrow(trashwheel)` observations, `r ncol(trashwheel)` variables including `r names(trashwheel)`. The median number of sports balls in a dumpster in 2019 is `r median(pull(filter(trashwheel,year==2019, trash_type == "sports_balls"),units))` units.
+
+* As for the Precipitation, there are total `r nrow(precipitation)` observations, `r ncol(precipitation)` columns which include `r names(precipitation)`. The total precipitation in 2018 is `r sum(pull(filter(precipitation,year == 2018),total))` inches. 
+
+
+
+
+
+
+
