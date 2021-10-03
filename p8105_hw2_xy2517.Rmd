@@ -1,13 +1,10 @@
 ---
 title: "p8105_hw2_xy2517"
-author: "Xuehan Yang xy2517"
+author: "Xuehan Yang"
 date: "2021/10/2"
 output: github_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
 
 ```{r, message=FALSE}
 library(tidyverse)
@@ -20,27 +17,27 @@ library(readxl)
 **Read and clean the Mr.Trash Wheel sheet.**
 
 ```{r,warning=FALSE}
-trashwheel = read_excel(path = "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx",range = cell_cols("A:N")) %>% 
+trashwheel = 
+  read_excel(path = "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx",range = cell_cols("A:N")) %>% 
   janitor::clean_names() %>% 
   mutate(sports_balls = round(sports_balls,0)) %>%  # round sports_balls to integer
   rename(weight = weight_tons, volumn = volume_cubic_yards) %>%  # change column name
-  pivot_longer(
-    plastic_bottles:sports_balls,
-    names_to = "trash_type",
-    values_to = "units"
-  ) %>%  # turn trash types into a variable
   drop_na(dumpster)
+
+head(trashwheel,3) %>% knitr::kable()
 ```
 
 **Read and clean 2018 and 2019 precipitation data.**
 
 ```{r, read data seperately}
-rain_2019 = read_excel(path = "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx", sheet = "2019 Precipitation", skip = 1) %>% 
+rain_2019 = 
+  read_excel(path = "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx", sheet = "2019 Precipitation", skip = 1) %>% 
   janitor::clean_names() %>% 
   drop_na(total,month) %>% 
   mutate(year = 2019)
 
-rain_2018 = read_excel(path = "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx", sheet = "2018 Precipitation", skip = 1) %>% 
+rain_2018 = 
+  read_excel(path = "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx", sheet = "2018 Precipitation", skip = 1) %>% 
   janitor::clean_names() %>% 
   drop_na(total,month) %>% 
   mutate(year = 2018)
@@ -50,18 +47,170 @@ rain_2018 = read_excel(path = "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx"
 
 ```{r, bind rows}
 precipitation = bind_rows(rain_2018,rain_2019) %>% 
-  mutate(month = month.name[month]) # change numeric month name to character
+  mutate(month = month.name[month]) %>%  # change numeric month name to character
+  relocate(year,month)
+
+head(precipitation,3) %>% knitr::kable()
 ```
 
 **Description:**
 
-* As for trashwheel, there are total `r nrow(trashwheel)` observations, `r ncol(trashwheel)` variables including `r names(trashwheel)`. The median number of sports balls in a dumpster in 2019 is `r median(pull(filter(trashwheel,year==2019, trash_type == "sports_balls"),units))` units.
+* As for trashwheel, there are total `r nrow(trashwheel)` observations, `r ncol(trashwheel)` variables including `r names(trashwheel)`. For example, there were 4.31 tons of trash on 2014-05-16, which included 1450 plastic bottles, 1820 polystyrene and so on. The median number of sports balls in a dumpster in 2019 is `r median(pull(filter(trashwheel,year==2019),sports_balls))` units.
 
 * As for the Precipitation, there are total `r nrow(precipitation)` observations, `r ncol(precipitation)` columns which include `r names(precipitation)`. The total precipitation in 2018 is `r sum(pull(filter(precipitation,year == 2018),total))` inches. 
 
 
+# Problem 2 
+
+**Clean the data in pols-month.**
+
+```{r, message=FALSE}
+pols = read_csv(file = "./data/pols-month.csv") %>%
+  janitor::clean_names() %>% 
+  separate(mon, into = c("year", "month", "day"),"-" ) %>% 
+  mutate(month = month.name[as.integer(month)], president = ifelse(prez_dem == 1, "dem", "gop"), year = as.integer(year)) %>% # Replace char month with full name
+  select(-prez_dem,-prez_gop,-day)
+
+head(pols,3) %>% knitr::kable()
+```
+
+**Clean the data in snp.csv.**
+
+Separate data into year, month and day. Then delete day and change year to a 4 digit form.
+
+```{r, message=FALSE}
+snp_raw = read_csv(file = "./data/snp.csv") %>% 
+  janitor::clean_names() %>% 
+  separate(date,into = c( "month", "day", "year"),"/") %>%
+  select(-day) %>% # remove day column
+  mutate(year = ifelse(as.integer(year) <= 15,as.integer(year) + 2000,as.integer(year) + 1900)) # it can be run just once.
+```
+
+Arrange year and month, then replace numeric month name with full name.
+
+```{r}
+snp = snp_raw %>% 
+  arrange(as.integer(year),as.integer(month)) %>% # change character into int , then arrange
+  mutate(month = month.name[as.integer(month)]) %>% 
+  relocate(year,month) # let year and month be the leading variable
+
+head(snp,3) %>% knitr::kable()
+```
+
+**Tidy the unemployment data.**
+
+```{r, message=FALSE}
+unemployment = read_csv(file = "./data/unemployment.csv") %>% 
+  pivot_longer(
+    Jan:Dec,
+    names_to = "month",
+    values_to = "percentage"
+  ) %>% 
+  mutate(month = replace(month,month == month.abb, month.name)) %>%  #replace abbreviation to full month name using Replace()
+  janitor::clean_names()
+
+head(unemployment,3) %>% knitr::kable()
+```
+
+**Join the three datasets together.**
+
+```{r}
+merge_df = left_join(pols, snp, by = c("year", "month")) %>% 
+  left_join(unemployment, by = c("year", "month"))
+
+tail(merge_df,3) %>% knitr::kable()
+```
+
+**Description**
+
+* pols: it contains `r nrow(pols)` observations of `r ncol(pols)` variables related to the number of national politicians who are democratic or republican ranging from Jan.`r min(pull(pols,year))` to Jun.`r max(pull(pols,year))`, totally `r max(pull(pols,year))-min(pull(pols,year))` years. Key variales include `r names(pols)`. "gop" indicates republic and "dem" indicates democratic. "gov_gop", "sen_gop" and "rep_gop" means the number of republic governors, senators and representatives. "gov_dem", "sen_dem" and "rep_dem" means the number of democratic governors, senators and representatives. 
+
+* snp: it contains `r nrow(snp)` observations of `r ncol(snp)` variables related to Standard & Poor’s stock market index (S&P), often used as a representative measure of stock market as a whole. It ranges from Jan.`r min(pull(snp,year))` to July.`r max(pull(snp,year))`, totally `r max(pull(snp,year))-min(pull(snp,year))` years. Key variales include `r names(snp)`, among which "close" are the closing values of the S&P stock index on the associated date.
+
+* unemployment: it contains `r nrow(unemployment)` observations of `r ncol(unemployment)` variables related to percentages of unemployment on the associated data. It ranges from Jan.`r min(pull(unemployment,year))` to June.`r max(pull(unemployment,year))`, totally `r max(pull(unemployment,year))-min(pull(unemployment,year))` years. Key variales include `r names(unemployment)`.
+
+* merge_df: final datasets contains `r nrow(merge_df)` observations of `r ncol(merge_df)` variables ranging from Jan.`r min(pull(merge_df,year))` to July.`r max(pull(merge_df,year))`, totally `r max(pull(merge_df,year))-min(pull(merge_df,year))` years.
 
 
+# Problem 3
 
+**Tidying the popularity of baby names data.**
 
+```{r, message=FALSE}
+baby_names = read_csv(file = "./data/Popular_Baby_Names.csv", col_types = "ccccii") %>% 
+  janitor::clean_names() %>% 
+  mutate(gender = str_to_lower(gender), 
+         ethnicity = str_to_lower(ethnicity),
+         childs_first_name = str_to_lower(childs_first_name)) %>% 
+  distinct() %>%  # remove distinct rows based on all column
+  mutate(
+    ethnicity = recode(ethnicity, 
+                       "asian and paci" = "asian and pacific islander",
+                       "black non hisp" = "black non hispanic",
+                       "white non hisp" = "white non hispanic"
+                       ))
+
+head(baby_names,3) %>% knitr::kable()
+```
+
+**Produce a table showing the rank in popularity of the name “Olivia” as a female baby name over time.**
+
+```{r female olivia}
+baby_names %>% 
+  filter(childs_first_name == "olivia", gender == "female") %>%
+  select(year_of_birth, ethnicity,rank) %>% 
+  pivot_wider(
+    names_from = year_of_birth,
+    values_from = rank
+  ) %>% knitr::kable() # produce a nicer table
+```
+
+**Produce a table showing the rank in popularity of the name “Olivia” as a male baby name over time.**
+
+```{r find the most common name among male children}
+male = baby_names %>% 
+  filter(gender == "male") %>%
+  arrange(desc(year_of_birth),rank)
+
+most_pop_male = pull(male,childs_first_name)[1]
+```
+
+**Display the rank of the most popular male name `r most_pop_male` with year and ethnicity.**
+
+```{r}
+baby_names %>% 
+  filter(childs_first_name == most_pop_male, gender == "male") %>%
+  select(year_of_birth, ethnicity,rank) %>% 
+  pivot_wider(
+    names_from = year_of_birth,
+    values_from = rank
+  ) %>% knitr::kable() # produce a nicer table
+```
+
+**Scatterplot showing the number of children with a name against the rank in popularity of the name.**
+
+Firstly, select the target subdatasets.
+
+```{r select the plotting dataset}
+plot_df = baby_names %>% 
+  filter(gender == "male", ethnicity == "white non hispanic", year_of_birth == 2016)
+```
+
+Then,draw plots between number of children with a name and rank in popularity.
+
+```{r scatterplot}
+num_popularity_plot = 
+  ggplot(plot_df, aes(x = rank, y = count)) + 
+  geom_point(aes(color = "Red")) +
+  xlab("Rank in popularity") +
+  ylab("The number of Children with this name") +
+  ggtitle("Tendency of the number of children with the popularity of of name") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+num_popularity_plot
+```
+
+```{r save plot}
+ggsave("./plots/num_popularity_plot.png", width = 10, height = 8)
+```
 
