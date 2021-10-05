@@ -165,7 +165,7 @@ baby_names %>%
   ) %>% knitr::kable() # produce a nicer table
 ```
 
-**Produce a table showing the rank in popularity of the name “Olivia” as a male baby name over time.**
+**Produce a table showing the rank in popularity of the most popular male name over time.**
 
 ```{r find the most common name among male children}
 male = baby_names %>% 
