@@ -18,11 +18,11 @@ library(readxl)
 
 ```{r,warning=FALSE}
 trashwheel = 
-  read_excel(path = "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx",range = cell_cols("A:N")) %>% 
+  read_excel(path = "./data/Trash-Wheel-Collection-Totals-7-2020-2.xlsx",range = cell_cols("A:N")) %>% 
   janitor::clean_names() %>% 
   mutate(sports_balls = round(sports_balls,0)) %>%  # round sports_balls to integer
   rename(weight = weight_tons, volumn = volume_cubic_yards) %>%  # change column name
-  drop_na(dumpster)
+  drop_na(dumpster,month) # add month in drop_na to delete Grand Total.
 
 head(trashwheel,3) %>% knitr::kable()
 ```
@@ -31,13 +31,13 @@ head(trashwheel,3) %>% knitr::kable()
 
 ```{r, read data seperately}
 rain_2019 = 
-  read_excel(path = "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx", sheet = "2019 Precipitation", skip = 1) %>% 
+  read_excel(path = "./data/Trash-Wheel-Collection-Totals-7-2020-2.xlsx", sheet = "2019 Precipitation", skip = 1) %>% 
   janitor::clean_names() %>% 
   drop_na(total,month) %>% 
   mutate(year = 2019)
 
 rain_2018 = 
-  read_excel(path = "./data/Trash-Wheel-Collection-Totals-8-6-19.xlsx", sheet = "2018 Precipitation", skip = 1) %>% 
+  read_excel(path = "./data/Trash-Wheel-Collection-Totals-7-2020-2.xlsx", sheet = "2018 Precipitation", skip = 1) %>% 
   janitor::clean_names() %>% 
   drop_na(total,month) %>% 
   mutate(year = 2018)
